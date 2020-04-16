@@ -28,7 +28,7 @@ Media = namedtuple("Media", "uri type group_id language name default autoselect 
 Start = namedtuple("Start", "time_offset precise")
 
 # EXT-X-STREAM-INF
-StreamInfo = namedtuple("StreamInfo", "bandwidth program_id codecs resolution audio video subtitles")
+StreamInfo = namedtuple("StreamInfo", "bandwidth program_id codecs resolution framerate audio video subtitles")
 
 # EXT-X-I-FRAME-STREAM-INF
 IFrameStreamInfo = namedtuple("IFrameStreamInfo", "bandwidth program_id codecs resolution video")
@@ -78,6 +78,8 @@ class M3U8Parser(object):
         if resolution:
             resolution = self.parse_resolution(resolution)
 
+        framerate = streaminf.get("FRAME-RATE")
+
         codecs = streaminf.get("CODECS")
         if codecs:
             codecs = codecs.split(",")
@@ -88,7 +90,7 @@ class M3U8Parser(object):
             return IFrameStreamInfo(bandwidth, program_id, codecs, resolution,
                                     streaminf.get("VIDEO"))
         else:
-            return StreamInfo(bandwidth, program_id, codecs, resolution,
+            return StreamInfo(bandwidth, program_id, codecs, resolution, framerate,
                               streaminf.get("AUDIO"), streaminf.get("VIDEO"),
                               streaminf.get("SUBTITLES"))
 

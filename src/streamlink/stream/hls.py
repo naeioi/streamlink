@@ -354,8 +354,9 @@ class HLSStream(HTTPStream):
 
     __shortname__ = "hls"
 
-    def __init__(self, session_, url, force_restart=False, start_offset=0, duration=None, **args):
-        HTTPStream.__init__(self, session_, url, **args)
+    def __init__(self, session_, url, resolution, framerate,
+                 force_restart=False, start_offset=0, duration=None, **args):
+        HTTPStream.__init__(self, session_, url, resolution, framerate, **args)
         self.force_restart = force_restart
         self.start_offset = start_offset
         self.duration = duration
@@ -450,6 +451,10 @@ class HLSStream(HTTPStream):
                 width, height = playlist.stream_info.resolution
                 names["pixels"] = "{0}p".format(height)
 
+            framerate = playlist.stream_info.framerate
+            if framerate:
+                framerate = int(framerate)
+
             if playlist.stream_info.bandwidth:
                 bw = playlist.stream_info.bandwidth
 
@@ -511,6 +516,8 @@ class HLSStream(HTTPStream):
             else:
                 stream = cls(session_,
                              playlist.uri,
+                             resolution=(width, height),
+                             framerate=framerate,
                              force_restart=force_restart,
                              start_offset=start_offset,
                              duration=duration,

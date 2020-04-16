@@ -32,8 +32,11 @@ class HTTPStream(Stream):
 
     __shortname__ = "http"
 
-    def __init__(self, session_, url, buffered=True, **args):
+    def __init__(self, session_, url, resolution=None, framerate=None, buffered=True, **args):
         Stream.__init__(self, session_)
+
+        self._resolution = resolution
+        self._framerate = framerate
 
         self.args = dict(url=url, **args)
         self.buffered = buffered
@@ -62,6 +65,14 @@ class HTTPStream(Stream):
         method = self.args.get("method", "GET")
         return requests.Request(method=method,
                                 **valid_args(self.args)).prepare().url
+
+    @property
+    def resolution(self):
+        return self._resolution
+    
+    @property
+    def framerate(self):
+        return self._framerate
 
     def open(self):
         method = self.args.get("method", "GET")
