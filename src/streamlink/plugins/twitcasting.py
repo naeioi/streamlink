@@ -5,7 +5,7 @@ import websocket
 from streamlink import logger
 from streamlink.buffers import RingBuffer
 from streamlink.compat import urlparse, unquote_plus
-from streamlink.plugin import Plugin, PluginError
+from streamlink.plugin import Plugin, PluginError, PluginArguments, PluginArgument
 from streamlink.plugin.api import useragents
 from streamlink.plugin.api import validate
 from streamlink.stream import Stream
@@ -16,9 +16,19 @@ log = logging.getLogger(__name__)
 
 
 class TwitCasting(Plugin):
+    arguments = PluginArguments(
+        PluginArgument(
+            "password",
+            metavar="PASSWORD",
+            help="Twitcasting room password to allow access to private livestream."
+        )
+    )
+
     _url_re = re.compile(r"http(s)?://twitcasting.tv/(?P<channel>[^/]+)", re.VERBOSE)
     _STREAM_INFO_URL = "https://twitcasting.tv/streamserver.php?target={channel}&mode=client"
+    _STREAM_PASSWORD_URL = "https://twitcasting.tv/{channel}"
     _STREAM_REAL_URL = "{proto}://{host}/ws.app/stream/{movie_id}/fmp4/bd/1/1500?mode={mode}"
+    _STREAM_REAL_URL_PRIVATE = _STREAM_REAL_URL + "&word={token}"
 
     _STREAM_INFO_SCHEMA = validate.Schema({
         "movie": {
@@ -38,6 +48,7 @@ class TwitCasting(Plugin):
         match = self._url_re.match(url).groupdict()
         self.channel = match.get("channel")
         self.session.http.headers.update({'User-Agent': useragents.CHROME})
+        self.private_token = None
 
     @classmethod
     def can_handle_url(cls, url):
@@ -64,13 +75,25 @@ class TwitCasting(Plugin):
 
         if (proto == '') or (host == '') or (not movie_id):
             raise PluginError("No stream available for user {}".format(self.channel))
-
-        real_stream_url = self._STREAM_REAL_URL.format(proto=proto, host=host, movie_id=movie_id, mode=mode)
+        
+        if self.private_token:
+            real_stream_url = self._STREAM_REAL_URL_PRIVATE.format(
+                proto=proto, host=host, movie_id=movie_id, 
+                mode=mode, token=self.private_token)
+        else:
+            real_stream_url = self._STREAM_REAL_URL.format(proto=proto, host=host, movie_id=movie_id, mode=mode)
         log.debug("Real stream url: {}".format(real_stream_url))
 
         return {mode: TwitCastingStream(session=self.session, url=real_stream_url)}
 
     def _get_stream_info(self):
+        password = self.options.get('password')
+        if password:
+            url = self._STREAM_PASSWORD_URL.format(channel=self.channel)
+            self.session.http.get(url)
+            res = self.session.http.post(url, data=dict(password=password))
+            self.private_token = self.session.http.cookies.get('wpass')
+            log.debug("Private token: {}".format(self.private_token))
         url = self._STREAM_INFO_URL.format(channel=self.channel)
         res = self.session.http.get(url)
         return self.session.http.json(res, schema=self._STREAM_INFO_SCHEMA)
