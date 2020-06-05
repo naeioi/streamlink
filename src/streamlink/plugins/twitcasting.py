@@ -1,5 +1,9 @@
 import logging
+import os
 import re
+import signal
+import sys
+import urllib.parse
 import websocket
 
 from streamlink import logger
@@ -91,7 +95,10 @@ class TwitCasting(Plugin):
         if password:
             url = self._STREAM_PASSWORD_URL.format(channel=self.channel)
             self.session.http.get(url)
-            res = self.session.http.post(url, data=dict(password=password))
+            res = self.session.http.post(url, 
+                                         data="password={}".format(urllib.parse.quote(password)),
+                                         headers={"Content-Type": "application/x-www-form-urlencoded"})
+            log.info(urllib.parse.quote(password))
             self.private_token = self.session.http.cookies.get('wpass')
             log.debug("Private token: {}".format(self.private_token))
         url = self._STREAM_INFO_URL.format(channel=self.channel)
