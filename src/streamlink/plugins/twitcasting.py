@@ -116,11 +116,9 @@ class TwitCastingWsClient(Thread):
 
         def on_message(ws, data):
             if not self.stopped.wait(0):
-                try:
-                    self.buffer.write(data)
-                except Exception as err:
-                    log.error(err)
-                    self.stop()
+                if type(data) == 'str':
+                    data = data.encode('utf-8')
+                self.buffer.write(data)
 
         def on_error(ws, error):
             log.error(error)
